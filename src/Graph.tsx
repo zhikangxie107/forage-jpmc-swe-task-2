@@ -1,21 +1,21 @@
-import React, { Component } from 'react';
-import { Table } from '@finos/perspective';
-import { ServerRespond } from './DataStreamer';
-import './Graph.css';
+import React, { Component } from "react";
+import { Table } from "@finos/perspective";
+import { ServerRespond } from "./DataStreamer";
+import "./Graph.css";
 
 /**
  * Props declaration for <Graph />
  */
 interface IProps {
-  data: ServerRespond[],
+  data: ServerRespond[];
 }
 
 /**
  * Perspective library adds load to HTMLElement prototype.
  * This interface acts as a wrapper for Typescript compiler.
  */
-interface PerspectiveViewerElement {
-  load: (table: Table) => void,
+interface PerspectiveViewerElement extends HTMLElement {
+  load: (table: Table) => void;
 }
 
 /**
@@ -27,19 +27,36 @@ class Graph extends Component<IProps, {}> {
   table: Table | undefined;
 
   render() {
-    return React.createElement('perspective-viewer');
+    return React.createElement("perspective-viewer");
   }
 
   componentDidMount() {
     // Get element to attach the table from the DOM.
-    const elem: PerspectiveViewerElement = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
-
+    const elem = (document.getElementsByTagName(
+      "perspective-viewer"
+    )[0] as unknown) as PerspectiveViewerElement;
     const schema = {
-      stock: 'string',
-      top_ask_price: 'float',
-      top_bid_price: 'float',
-      timestamp: 'date',
+      stock: "string",
+      top_ask_price: "float",
+      top_bid_price: "float",
+      timestamp: "date",
     };
+
+    //sets graph to line graph
+    elem.setAttribute("view", "y_line");
+    //sets the graph to show the stock data y-axis
+    elem.setAttribute("column-pivots", '["stock"]');
+    //sets the graph to show the time data on the x-axis
+    elem.setAttribute("row-pivots", '["timestamp"]');
+    //sets the graph to show the top_ask_price data on the y-axis only
+    elem.setAttribute("columns", '["top_ask_price"]');
+
+    //sets the graph to handle duplicate data 
+    elem.setAttribute(
+      "aggregates",
+      `{"stock":"distinct count", "top_ask_price":"avg", "top_bid_price":"avg","timestamp":"distinct count"}`
+    );
+
 
     if (window.perspective && window.perspective.worker()) {
       this.table = window.perspective.worker().table(schema);
@@ -57,15 +74,17 @@ class Graph extends Component<IProps, {}> {
     if (this.table) {
       // As part of the task, you need to fix the way we update the data props to
       // avoid inserting duplicated entries into Perspective table again.
-      this.table.update(this.props.data.map((el: any) => {
-        // Format the data from ServerRespond to the schema
-        return {
-          stock: el.stock,
-          top_ask_price: el.top_ask && el.top_ask.price || 0,
-          top_bid_price: el.top_bid && el.top_bid.price || 0,
-          timestamp: el.timestamp,
-        };
-      }));
+      this.table.update(
+        this.props.data.map((el: any) => {
+          // Format the data from ServerRespond to the schema
+          return {
+            stock: el.stock,
+            top_ask_price: (el.top_ask && el.top_ask.price) || 0,
+            top_bid_price: (el.top_bid && el.top_bid.price) || 0,
+            timestamp: el.timestamp,
+          };
+        })
+      );
     }
   }
 }
